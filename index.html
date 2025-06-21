@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HydroQuiz - Desafío Fluvial</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* --- ESTILOS CSS (Sin cambios) --- */
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap');
+        :root {
+            --bg-color: #ffffff; --container-bg: #ffffff; --text-primary: #111418; --text-secondary: #6a7681;
+            --border-color: #dbe0e6; --input-bg: #f1f2f4; --primary-blue: #0c7ff2; --secondary-blue: #679aca;
+            --green: #28a745; --red: #dc3545; --green-light: #e9f7ec; --red-light: #fceceb; --blue-light: #e7f2fe;
+            --gold: #ffc107;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-color); color: var(--text-primary);
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem;
+        }
+        .container {
+            width: 100%; max-width: 960px; background-color: var(--container-bg); border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); overflow: hidden;
+        }
+        .screen { display: none; } .screen.active { display: block; }
+        .content-wrapper { padding: 2rem 3rem; }
+        @media (max-width: 768px) { .content-wrapper { padding: 1.5rem; } }
+        button { border: none; cursor: pointer; transition: all 0.2s ease; font-weight: 700; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+        button:disabled { background-color: #ccc !important; color: #777 !important; cursor: not-allowed; }
+        #home-screen { padding: 1.5rem; }
+        .home-hero {
+            min-height: 480px; background-image: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url("QuizTime.jpg");
+            background-size: cover; background-position: center; border-radius: 12px;
+            display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end; padding: 2.5rem; gap: 1.5rem;
+        }
+        .home-hero h1 {
+            color: white; font-size: 3rem; font-weight: 800; text-shadow: 0 2px 10px rgba(0,0,0,0.5); text-align: left;
+        }
+        #create-game-btn {
+            background-color: var(--secondary-blue); color: var(--text-primary); border-radius: 50px; padding: 0.75rem 1.5rem; font-size: 1rem;
+        }
+        .home-join-section {
+            display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem;
+            padding: 1.5rem 0.5rem 0.5rem 0.5rem; max-width: 580px;
+        }
+        .input-group { flex: 1; min-width: 200px; }
+        .input-group label { display: block; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-primary); }
+        .input-group input[type="text"] {
+            width: 100%; padding: 1rem; border-radius: 10px; border: none; background-color: var(--input-bg); font-size: 1rem;
+        }
+        .input-group input[type="text"]:focus { outline: none; box-shadow: 0 0 0 3px rgba(12, 127, 242, 0.2); }
+        #join-game-btn {
+            background-color: var(--secondary-blue); color: var(--text-primary); border-radius: 50px;
+            padding: 0.75rem 1.5rem; font-size: 1rem; height: 50px;
+        }
+        #lobby-screen h2 { font-size: 32px; text-align: left; margin-bottom: 0.25rem; }
+        #lobby-screen p.subtitle { text-align: left; font-size: 14px; margin-bottom: 2rem; }
+        #lobby-screen .game-code-display {
+            background-color: transparent; color: var(--text-primary); font-size: 4rem; font-weight: 700;
+            text-align: center; border: none; padding: 1.5rem 0; margin: 0;
+        }
+        #lobby-screen h3 { font-size: 22px; text-align: left; margin-top: 2rem; margin-bottom: 0.5rem; }
+        #lobby-screen #player-list { list-style: none; padding: 0; margin: 0; }
+        #lobby-screen #player-list li {
+            background-color: transparent; padding: 1rem; font-weight: 400;
+            text-align: left; border-bottom: 1px solid var(--border-color); border-radius: 0;
+        }
+        #lobby-screen #player-list li:first-child { border-top: 1px solid var(--border-color); }
+        .lobby-actions { text-align: center; padding: 2.5rem 0 1rem 0; }
+        #start-game-btn {
+            background-color: var(--primary-blue); color: white; border-radius: 10px; padding: 0.75rem 1.5rem; font-size: 1rem;
+        }
+        #waiting-for-host-msg { color: var(--text-secondary); font-size: 1rem; margin: 0; }
+        .question-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;
+            color: var(--text-secondary); font-weight: 500;
+        }
+        .progress-bar {
+            width: 100%; height: 8px; background-color: var(--border-color); border-radius: 4px;
+            margin-bottom: 1rem; overflow: hidden;
+        }
+        .progress-bar-inner { height: 100%; background-color: var(--text-primary); border-radius: 4px; transition: width 0.3s ease; }
+        #question-text { font-size: 1.75rem; font-weight: 700; margin: 2.5rem 0; min-height: 80px; text-align: center; }
+        .answer-options { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+        .answer-option {
+            display: flex; align-items: center; padding: 1rem; border: 2px solid var(--border-color);
+            border-radius: 10px; cursor: pointer; transition: all 0.2s ease;
+        }
+        .answer-option:not(.disabled):hover { border-color: var(--primary-blue); background-color: var(--blue-light); }
+        .answer-option.selected { border-color: var(--primary-blue); background-color: var(--blue-light); }
+        .answer-option.correct { border-color: var(--green); background-color: var(--green-light); color: var(--green); font-weight: 700; }
+        .answer-option.incorrect { border-color: var(--red); background-color: var(--red-light); }
+        .answer-option.disabled { pointer-events: none; opacity: 0.6; }
+        .answer-option span { margin-left: 1rem; }
+        #game-over-screen h2 { font-size: 32px; text-align: center; margin-bottom: 1rem; }
+        #game-over-screen p { margin-bottom: 2rem; }
+        #leaderboard { list-style: none; padding: 0; margin-top: 1rem; }
+        #leaderboard li {
+            display: flex; justify-content: space-between; align-items: center; padding: 1rem;
+            border: 1px solid var(--border-color); border-radius: 10px; margin-bottom: 0.75rem; font-weight: 500;
+        }
+        #leaderboard li:first-child {
+            border-color: var(--primary-blue); background-color: #f0f4f8; font-weight: 700; border-width: 2px;
+        }
+        .player-name .fa-trophy { display: none; color: var(--gold); margin-right: 0.5rem; }
+        #leaderboard li:first-child .player-name .fa-trophy { display: inline-block; }
+        .player-score { font-weight: 700; color: var(--primary-blue); }
+        #play-again-btn {
+             background-color: var(--primary-blue); color: white; border-radius: 10px; padding: 0.75rem 1.5rem; font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HTML DE LAS PANTALLAS (Sin cambios) -->
+        <div id="home-screen" class="screen active"><div class="home-hero"><h1>Quiz sobre la Hidrografía</h1><button id="create-game-btn">Crear Partida</button></div><div class="home-join-section"><div class="input-group"><label for="name-input">Tu Nombre (para unirte)</label><input type="text" id="name-input" placeholder="Introduce tu nombre"></div><div class="input-group"><label for="code-input">Código de Partida</label><input type="text" id="code-input" placeholder="Introduce el código" maxlength="6"></div><button id="join-game-btn">Unirse</button></div></div>
+        <div id="lobby-screen" class="screen"><div class="content-wrapper"><h2>Sala de Espera</h2><p class="subtitle">Comparte este código para que otros se unan:</p><div id="game-code-display" class="game-code-display"></div><h3>Jugadores Conectados:</h3><ul id="player-list"></ul><div class="lobby-actions"><button id="start-game-btn" style="display: none;">¡Empezar Partida!</button><p id="waiting-for-host-msg" style="display: none;">Esperando que el anfitrión inicie la partida...</p></div></div></div>
+        <div id="question-screen" class="screen"><div class="content-wrapper"><div class="question-header"><span id="question-counter"></span><span id="timer"></span></div><div class="progress-bar"><div id="progress-bar-inner" class="progress-bar-inner"></div></div><h2 id="question-text"></h2><div class="answer-options" id="answer-options"></div></div></div>
+        <div id="game-over-screen" class="screen"><div class="content-wrapper"><h2>¡Partida Finalizada!</h2><p>Estas son las posiciones finales. ¡Felicidades al ganador!</p><ol id="leaderboard"></ol><div style="text-align:center; margin-top: 2rem;"><button id="play-again-btn">Volver al Inicio</button></div></div></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const SUPABASE_URL = 'https://ajaaoyxngmjejrxlttux.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqYWFveXhuZ21qZWpyeGx0dHV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1MTg3NTIsImV4cCI6MjA2NjA5NDc1Mn0.lH29Vwv46wG5ccAtuIFSDY8TX_ZBlDysQPA1fg_UMXA';
+        const { createClient } = supabase;
+        const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const QUESTION_DURATION = 20000;
+
+        const questions = [
+            { question: "¿Qué define a una 'cuenca hidrográfica'?", options: ["Un río muy ancho", "Una cadena de montañas", "El área de terreno donde el agua drena a un punto común", "Un gran cuerpo de agua salada"], correct: 2 },
+            { question: "En hidrografía, ¿qué es un 'afluente'?", options: ["El punto donde un río desemboca en el mar", "Un río que desemboca en otro río más grande", "El nacimiento de un río en una montaña", "Una curva muy pronunciada de un río"], correct: 1 },
+            { question: "¿Cuál es la característica principal que define a un 'lago'?", options: ["Es una corriente de agua continua", "Siempre contiene agua salada", "Es una masa de agua depositada en una depresión del terreno", "Solo se forma por la lluvia"], correct: 2 },
+            { question: "Una 'cascada' o 'catarata' se forma principalmente por...", options: ["La acción del viento sobre el agua", "La acumulación de sedimentos en el fondo", "Un desnivel brusco en el curso de un río", "El derretimiento de un glaciar"], correct: 2 },
+            { question: "El 'caudal' de un río se refiere a...", options: ["La temperatura del agua", "La profundidad máxima del río", "La velocidad a la que fluye el agua", "El volumen de agua que pasa por un punto en un tiempo determinado"], correct: 3 },
+            { question: "La 'desembocadura' de un río es...", options: ["El lugar donde nace", "Su tramo más caudaloso", "El punto final donde vierte sus aguas en un mar o lago", "Un sinónimo de afluente"], correct: 2 },
+            { question: "El conjunto de todos los ríos que vierten sus aguas en un río principal forma su...", options: ["Red hidrográfica", "Caudal medio", "Delta", "Meandro"], correct: 0 }
+        ];
+        
+        let gameState = { isHost: false, gameId: null, playerId: null, gameCode: null, currentQuestionIndex: -1, questionStartTime: 0, timerInterval: null, realtimeChannel: null };
+        let questionTransitioning = false;
+        
+        const screens = { home: document.getElementById('home-screen'), lobby: document.getElementById('lobby-screen'), question: document.getElementById('question-screen'), gameOver: document.getElementById('game-over-screen') };
+        const createGameBtn = document.getElementById('create-game-btn'), joinGameBtn = document.getElementById('join-game-btn'), startGameBtn = document.getElementById('start-game-btn'), playAgainBtn = document.getElementById('play-again-btn');
+        const progressBarInner = document.getElementById('progress-bar-inner');
+
+        function showScreen(screenName) { Object.values(screens).forEach(s => s.classList.remove('active')); screens[screenName].classList.add('active'); }
+        function generateGameCode() { return Math.random().toString(36).substring(2, 8).toUpperCase(); }
+        
+        async function createGame() {
+            createGameBtn.disabled = true; createGameBtn.textContent = 'Creando...';
+            const code = generateGameCode();
+            const { data: gameData, error: gameError } = await db.from('games').insert({ game_code: code }).select().single();
+            if (gameError) { console.error('Error creando partida:', gameError); alert('Hubo un error al crear la partida.'); createGameBtn.disabled = false; createGameBtn.textContent = 'Crear Partida'; return; }
+            Object.assign(gameState, { isHost: true, gameId: gameData.id, playerId: null, gameCode: gameData.game_code });
+            document.getElementById('game-code-display').textContent = gameState.gameCode;
+            document.getElementById('start-game-btn').style.display = 'inline-block';
+            document.getElementById('waiting-for-host-msg').style.display = 'none';
+            showScreen('lobby');
+            subscribeToGameChanges();
+        }
+
+        async function joinGame() {
+            const name = document.getElementById('name-input').value.trim();
+            const code = document.getElementById('code-input').value.trim().toUpperCase();
+            if (!name || !code) { alert('Por favor, introduce tu nombre y un código de partida para unirte.'); return; }
+            joinGameBtn.disabled = true; joinGameBtn.textContent = 'Uniéndose...';
+            const { data: game, error: gameError } = await db.from('games').select('id, status').eq('game_code', code).single();
+            if (gameError || !game) { alert('Código de partida no válido.'); }
+            else if (game.status !== 'waiting') { alert('Esta partida ya ha comenzado o ha finalizado.'); }
+            else {
+                const { data: player, error: playerError } = await db.from('players').insert({ name: name, game_id: game.id }).select().single();
+                if (playerError) { alert('Error al unirse. El nombre podría estar ya en uso en esta partida.'); }
+                else {
+                    Object.assign(gameState, { isHost: false, gameId: game.id, playerId: player.id, gameCode: code });
+                    document.getElementById('game-code-display').textContent = gameState.gameCode;
+                    document.getElementById('start-game-btn').style.display = 'none';
+                    document.getElementById('waiting-for-host-msg').style.display = 'block';
+                    showScreen('lobby');
+                    subscribeToGameChanges();
+                }
+            }
+            joinGameBtn.disabled = false; joinGameBtn.textContent = 'Unirse';
+        }
+
+        async function startGame() {
+            if (!gameState.isHost) return;
+            await db.from('games').update({ status: 'in_progress', current_question: 0 }).eq('id', gameState.gameId);
+        }
+
+        function subscribeToGameChanges() {
+            if (gameState.realtimeChannel) db.removeChannel(gameState.realtimeChannel);
+            gameState.realtimeChannel = db.channel(`game-${gameState.gameId}`)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${gameState.gameId}` }, handlePlayerUpdate)
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameState.gameId}` }, handleGameUpdate)
+                // **CORRECCIÓN DEFINITIVA**: Esta es la parte que soluciona el bug.
+                // Se asegura de que CUALQUIER cliente (host o jugador) que se suscriba
+                // a la sala, inmediatamente pida la lista de jugadores.
+                .subscribe(status => {
+                    if (status === 'SUBSCRIBED') {
+                        handlePlayerUpdate(); 
+                    }
+                });
+        }
+        
+        async function handlePlayerUpdate() {
+            const { data: players, error } = await db.from('players').select('name, last_answered_index').eq('game_id', gameState.gameId);
+            if (error) { console.error("Error obteniendo jugadores:", error); return; }
+            
+            document.getElementById('player-list').innerHTML = players.map(p => `<li>${p.name}</li>`).join('');
+
+            if (gameState.isHost && gameState.currentQuestionIndex > -1 && !questionTransitioning) {
+                const allAnswered = players.length > 0 && players.every(p => p.last_answered_index === gameState.currentQuestionIndex);
+                if (allAnswered) {
+                    endQuestionPhase();
+                }
+            }
+        }
+
+        function handleGameUpdate({ new: newGameData }) {
+            if (newGameData.current_question !== gameState.currentQuestionIndex) {
+                gameState.currentQuestionIndex = newGameData.current_question;
+                if (gameState.currentQuestionIndex >= questions.length) {
+                    endGame();
+                } else {
+                    displayQuestion();
+                }
+            }
+            if (newGameData.status === 'finished' && !screens.gameOver.classList.contains('active')) {
+                endGame();
+            }
+        }
+        
+        function displayQuestion() {
+            questionTransitioning = false; 
+            clearInterval(gameState.timerInterval);
+            const questionData = questions[gameState.currentQuestionIndex];
+            if (!questionData) { endGame(); return; }
+            showScreen('question');
+            const progress = ((gameState.currentQuestionIndex + 1) / questions.length) * 100;
+            progressBarInner.style.width = `${progress}%`;
+            document.getElementById('question-counter').textContent = `Pregunta ${gameState.currentQuestionIndex + 1} de ${questions.length}`;
+            document.getElementById('question-text').textContent = questionData.question;
+            const answerOptions = document.getElementById('answer-options');
+            const isHostView = gameState.isHost ? 'disabled' : '';
+            answerOptions.innerHTML = questionData.options.map((option, index) => {
+                const onClickAction = gameState.isHost ? '' : `selectAnswer(${index}, this)`;
+                return `<div class="answer-option ${isHostView}" onclick="${onClickAction}"><span>${option}</span></div>`;
+            }).join('');
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(gameState.timerInterval);
+            gameState.questionStartTime = Date.now();
+            const timerEl = document.getElementById('timer');
+            const updateDisplay = () => {
+                const elapsed = Date.now() - gameState.questionStartTime;
+                const remainingMs = QUESTION_DURATION - elapsed;
+                if (remainingMs <= 0) {
+                    timerEl.textContent = `Tiempo: 00:00`;
+                    endQuestionPhase(); 
+                } else {
+                    const secondsLeft = Math.ceil(remainingMs / 1000);
+                    timerEl.textContent = `Tiempo: 00:${secondsLeft.toString().padStart(2, '0')}`;
+                }
+            };
+            updateDisplay(); 
+            gameState.timerInterval = setInterval(updateDisplay, 250);
+        }
+
+        function endQuestionPhase() {
+            if (questionTransitioning) return;
+            questionTransitioning = true;
+            clearInterval(gameState.timerInterval);
+            showCorrectAnswers();
+            if (gameState.isHost) {
+                triggerNextQuestion();
+            }
+        }
+        
+        function showCorrectAnswers() {
+            const questionData = questions[gameState.currentQuestionIndex];
+            const allOptions = document.querySelectorAll('.answer-option');
+            allOptions.forEach(opt => opt.classList.add('disabled'));
+            if (questionData && allOptions[questionData.correct]) {
+                allOptions[questionData.correct].classList.add('correct');
+            }
+        }
+        
+        function triggerNextQuestion() {
+            setTimeout(() => {
+                moveToNextQuestion();
+            }, 2500);
+        }
+
+        async function selectAnswer(selectedIndex, element) {
+            endQuestionPhase();
+            const questionData = questions[gameState.currentQuestionIndex];
+            const isCorrect = selectedIndex === questionData.correct;
+            
+            if (isCorrect) {
+                element.classList.add('correct');
+                const { data } = await db.from('players').select('score').eq('id', gameState.playerId).single();
+                if (data) await db.from('players').update({ score: data.score + 1000 }).eq('id', gameState.playerId);
+            } else {
+                element.classList.add('incorrect');
+            }
+            
+            await db.from('players').update({ last_answered_index: gameState.currentQuestionIndex }).eq('id', gameState.playerId);
+        }
+
+        async function moveToNextQuestion() {
+            const nextIndex = gameState.currentQuestionIndex + 1;
+            const update = nextIndex >= questions.length ? { status: 'finished', current_question: nextIndex } : { current_question: nextIndex };
+            await db.from('games').update(update).eq('id', gameState.gameId);
+        }
+
+        async function endGame() {
+            clearInterval(gameState.timerInterval);
+            if (screens.gameOver.classList.contains('active')) return;
+            showScreen('gameOver');
+            const { data: players, error } = await db.from('players').select('name, score').eq('game_id', gameState.gameId).order('score', { ascending: false });
+            if (error) return;
+            document.getElementById('leaderboard').innerHTML = players.map(p => 
+                `<li>
+                    <span class="player-name"><i class="fa-solid fa-trophy"></i> ${p.name}</span>
+                    <strong class="player-score">${p.score} pts</strong>
+                </li>`
+            ).join('');
+            if (gameState.realtimeChannel) { db.removeChannel(gameState.realtimeChannel); gameState.realtimeChannel = null; }
+        }
+        
+        function resetGame() {
+            Object.assign(gameState, { isHost: false, gameId: null, playerId: null, gameCode: null, currentQuestionIndex: -1, questionStartTime: 0, timerInterval: null, realtimeChannel: null });
+            document.getElementById('name-input').value = '';
+            document.getElementById('code-input').value = '';
+            createGameBtn.disabled = false; createGameBtn.textContent = 'Crear Partida';
+            showScreen('home');
+        }
+
+        createGameBtn.addEventListener('click', createGame);
+        joinGameBtn.addEventListener('click', joinGame);
+        startGameBtn.addEventListener('click', startGame);
+        playAgainBtn.addEventListener('click', resetGame);
+    </script>
+</body>
+</html>
