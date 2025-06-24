@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroQuiz - Desafío Fluvial</title>
+    <title>HydroQuiz - Desafío</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         /* --- ESTILOS CSS (Sin cambios) --- */
@@ -115,7 +115,7 @@
 <body>
     <div class="container">
         <!-- HTML DE LAS PANTALLAS (Sin cambios) -->
-        <div id="home-screen" class="screen active"><div class="home-hero"><h1>Quiz sobre la Hidrografía</h1><button id="create-game-btn">Crear Partida</button></div><div class="home-join-section"><div class="input-group"><label for="name-input">Tu Nombre (para unirte)</label><input type="text" id="name-input" placeholder="Introduce tu nombre"></div><div class="input-group"><label for="code-input">Código de Partida</label><input type="text" id="code-input" placeholder="Introduce el código" maxlength="6"></div><button id="join-game-btn">Unirse</button></div></div>
+        <div id="home-screen" class="screen active"><div class="home-hero"><h1>Quiz sobre las Cuencas Hidrográficas</h1><button id="create-game-btn">Crear Partida</button></div><div class="home-join-section"><div class="input-group"><label for="name-input">Tu Nombre (para unirte)</label><input type="text" id="name-input" placeholder="Introduce tu nombre"></div><div class="input-group"><label for="code-input">Código de Partida</label><input type="text" id="code-input" placeholder="Introduce el código" maxlength="6"></div><button id="join-game-btn">Unirse</button></div></div>
         <div id="lobby-screen" class="screen"><div class="content-wrapper"><h2>Sala de Espera</h2><p class="subtitle">Comparte este código para que otros se unan:</p><div id="game-code-display" class="game-code-display"></div><h3>Jugadores Conectados:</h3><ul id="player-list"></ul><div class="lobby-actions"><button id="start-game-btn" style="display: none;">¡Empezar Partida!</button><p id="waiting-for-host-msg" style="display: none;">Esperando que el anfitrión inicie la partida...</p></div></div></div>
         <div id="question-screen" class="screen"><div class="content-wrapper"><div class="question-header"><span id="question-counter"></span><span id="timer"></span></div><div class="progress-bar"><div id="progress-bar-inner" class="progress-bar-inner"></div></div><h2 id="question-text"></h2><div class="answer-options" id="answer-options"></div></div></div>
         <div id="game-over-screen" class="screen"><div class="content-wrapper"><h2>¡Partida Finalizada!</h2><p>Estas son las posiciones finales. ¡Felicidades al ganador!</p><ol id="leaderboard"></ol><div style="text-align:center; margin-top: 2rem;"><button id="play-again-btn">Volver al Inicio</button></div></div></div>
