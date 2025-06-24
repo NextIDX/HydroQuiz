@@ -185,9 +185,25 @@
             joinGameBtn.disabled = false; joinGameBtn.textContent = 'Unirse';
         }
 
+        // --- FUNCIÓN CORREGIDA ---
         async function startGame() {
             if (!gameState.isHost) return;
-            await db.from('games').update({ status: 'in_progress', current_question: 0 }).eq('id', gameState.gameId);
+            startGameBtn.disabled = true; // Deshabilitar el botón para evitar clics múltiples
+
+            // 1. Actualiza la DB para que los otros jugadores reciban el evento
+            const { error } = await db.from('games').update({ status: 'in_progress', current_question: 0 }).eq('id', gameState.gameId);
+            
+            if (error) {
+                console.error("Error al empezar la partida:", error);
+                alert("No se pudo empezar la partida.");
+                startGameBtn.disabled = false;
+                return;
+            }
+
+            // 2. Actualiza el estado local del anfitrión y muestra la pregunta MANUALMENTE
+            // Esto soluciona el problema de que el anfitrión no veía la primera pregunta.
+            gameState.currentQuestionIndex = 0;
+            displayQuestion();
         }
 
         function subscribeToGameChanges() {
@@ -195,9 +211,6 @@
             gameState.realtimeChannel = db.channel(`game-${gameState.gameId}`)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${gameState.gameId}` }, handlePlayerUpdate)
                 .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameState.gameId}` }, handleGameUpdate)
-                // **CORRECCIÓN DEFINITIVA**: Esta es la parte que soluciona el bug.
-                // Se asegura de que CUALQUIER cliente (host o jugador) que se suscriba
-                // a la sala, inmediatamente pida la lista de jugadores.
                 .subscribe(status => {
                     if (status === 'SUBSCRIBED') {
                         handlePlayerUpdate(); 
@@ -211,6 +224,7 @@
             
             document.getElementById('player-list').innerHTML = players.map(p => `<li>${p.name}</li>`).join('');
 
+            // Lógica para que el anfitrión avance si todos han respondido
             if (gameState.isHost && gameState.currentQuestionIndex > -1 && !questionTransitioning) {
                 const allAnswered = players.length > 0 && players.every(p => p.last_answered_index === gameState.currentQuestionIndex);
                 if (allAnswered) {
@@ -220,6 +234,11 @@
         }
 
         function handleGameUpdate({ new: newGameData }) {
+            // No actualizar si somos el anfitrión, ya que lo manejamos localmente para evitar conflictos
+            if (gameState.isHost && newGameData.status === 'in_progress' && newGameData.current_question === 0) {
+                return;
+            }
+
             if (newGameData.current_question !== gameState.currentQuestionIndex) {
                 gameState.currentQuestionIndex = newGameData.current_question;
                 if (gameState.currentQuestionIndex >= questions.length) {
@@ -244,12 +263,16 @@
             document.getElementById('question-counter').textContent = `Pregunta ${gameState.currentQuestionIndex + 1} de ${questions.length}`;
             document.getElementById('question-text').textContent = questionData.question;
             const answerOptions = document.getElementById('answer-options');
-            const isHostView = gameState.isHost ? 'disabled' : '';
+            
+            // Los anfitriones no pueden hacer clic, solo los jugadores.
             answerOptions.innerHTML = questionData.options.map((option, index) => {
-                const onClickAction = gameState.isHost ? '' : `selectAnswer(${index}, this)`;
-                return `<div class="answer-option ${isHostView}" onclick="${onClickAction}"><span>${option}</span></div>`;
+                return `<div class="answer-option" onclick="${gameState.isHost ? '' : `selectAnswer(${index}, this)`}"><span>${option}</span></div>`;
             }).join('');
-            startTimer();
+
+            // Los anfitriones y jugadores que no han respondido inician el temporizador
+            if (!gameState.isHost || (gameState.isHost && !questionTransitioning)) {
+                 startTimer();
+            }
         }
 
         function startTimer() {
@@ -261,7 +284,14 @@
                 const remainingMs = QUESTION_DURATION - elapsed;
                 if (remainingMs <= 0) {
                     timerEl.textContent = `Tiempo: 00:00`;
-                    endQuestionPhase(); 
+                    clearInterval(gameState.timerInterval);
+                    // Solo el anfitrión debe decidir pasar de pregunta cuando el tiempo acaba
+                    if (gameState.isHost) {
+                         endQuestionPhase(); 
+                    } else {
+                        // Para los jugadores, solo se deshabilitan las opciones
+                        showCorrectAnswers();
+                    }
                 } else {
                     const secondsLeft = Math.ceil(remainingMs / 1000);
                     timerEl.textContent = `Tiempo: 00:${secondsLeft.toString().padStart(2, '0')}`;
@@ -276,6 +306,7 @@
             questionTransitioning = true;
             clearInterval(gameState.timerInterval);
             showCorrectAnswers();
+            // Solo el anfitrión desencadena la siguiente pregunta.
             if (gameState.isHost) {
                 triggerNextQuestion();
             }
@@ -284,31 +315,57 @@
         function showCorrectAnswers() {
             const questionData = questions[gameState.currentQuestionIndex];
             const allOptions = document.querySelectorAll('.answer-option');
-            allOptions.forEach(opt => opt.classList.add('disabled'));
+            allOptions.forEach(opt => {
+                opt.classList.add('disabled');
+                opt.onclick = null; // Quitar el evento onclick
+            });
             if (questionData && allOptions[questionData.correct]) {
-                allOptions[questionData.correct].classList.add('correct');
+                const selectedOption = document.querySelector('.answer-option.selected');
+                // Si no es la correcta, también la mostramos
+                if (selectedOption && !selectedOption.classList.contains('correct')) {
+                    allOptions[questionData.correct].classList.add('correct');
+                } else if (!selectedOption) { // Si el tiempo se acabó sin responder
+                    allOptions[questionData.correct].classList.add('correct');
+                }
             }
         }
         
         function triggerNextQuestion() {
             setTimeout(() => {
                 moveToNextQuestion();
-            }, 2500);
+            }, 3000); // Aumentado a 3 segundos para dar tiempo a ver la respuesta
         }
 
+        // --- FUNCIÓN CORREGIDA ---
         async function selectAnswer(selectedIndex, element) {
-            endQuestionPhase();
+            // 1. Evitar dobles respuestas deteniendo el timer y deshabilitando opciones
+            clearInterval(gameState.timerInterval);
+            const allOptions = document.querySelectorAll('.answer-option');
+            allOptions.forEach(opt => {
+                opt.classList.add('disabled');
+                opt.onclick = null; // Eliminar el manejador de eventos
+            });
+            element.classList.add('selected');
+
+            // 2. Comprobar si la respuesta es correcta y dar feedback visual inmediato
             const questionData = questions[gameState.currentQuestionIndex];
             const isCorrect = selectedIndex === questionData.correct;
             
             if (isCorrect) {
                 element.classList.add('correct');
+                // Actualizar la puntuación en la DB
                 const { data } = await db.from('players').select('score').eq('id', gameState.playerId).single();
                 if (data) await db.from('players').update({ score: data.score + 1000 }).eq('id', gameState.playerId);
             } else {
                 element.classList.add('incorrect');
+                // Mostrar cuál era la respuesta correcta
+                if (allOptions[questionData.correct]) {
+                    allOptions[questionData.correct].classList.add('correct');
+                }
             }
             
+            // 3. Notificar a la base de datos que este jugador ya ha respondido
+            // Esto activará handlePlayerUpdate en el anfitrión, quien decidirá si avanzar.
             await db.from('players').update({ last_answered_index: gameState.currentQuestionIndex }).eq('id', gameState.playerId);
         }
 
@@ -338,6 +395,7 @@
             document.getElementById('name-input').value = '';
             document.getElementById('code-input').value = '';
             createGameBtn.disabled = false; createGameBtn.textContent = 'Crear Partida';
+            startGameBtn.disabled = false;
             showScreen('home');
         }
 
